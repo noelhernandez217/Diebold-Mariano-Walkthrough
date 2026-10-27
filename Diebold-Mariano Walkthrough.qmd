@@ -1,0 +1,58 @@
+---
+title: "Diebold-Mariano Walkthrough"
+format: html
+editor: visual
+---
+
+Using starter code form slide 6. This is from lecture two in week 3. Need to load necessray libraries first. 
+
+```{r}
+library(tsibble)
+library(fable)
+library(tidyverse)
+library(knitr)
+library(tsibbledata)
+library(glue)
+```
+
+Lets build the starter dataframe and grab the data that comes into the fable package. 
+
+```{r}
+# forecast horizon
+H <- 4
+WIN <- 240
+# First origin: 20 years of monthly data
+INIT <- 240
+
+cafes <- aus_retail |>
+  filter(
+    State == "Victoria",
+    Industry == "Cafes, restaurants and catering services"
+  )
+
+origins_roll <- cafes |>
+  slide_tsibble(.size = WIN, .step = 1)
+
+tscv_roll_fc <- origins_roll |>
+  model(mean = MEAN(Turnover),
+        snaive = SNAIVE(Turnover),
+        drift = RW(Turnover ~ drift()),
+        tslm = TSLM(Turnover ~ trend() + season())) |>
+  forecast(h = H) |>
+  filter(Month <= max(cafes$Month)) |>
+  group_by(.id, .model) |> mutate(h = row_number()) |> ungroup() |>
+  as_fable(response = "Turnover", distribution = Turnover)
+
+  
+errs <- tscv_roll_fc |>
+  filter(h == 1) |>
+  as_tibble() |>
+  left_join(as_tibble(cafes) |> select(Month, actual = Turnover),
+    by = "Month") |>
+mutate(e = actual - .mean) |>
+select(Month, .model, e) |>
+pivot_wider(names_from = .model, values_from = e) |>
+
+head(errs)
+
+```
