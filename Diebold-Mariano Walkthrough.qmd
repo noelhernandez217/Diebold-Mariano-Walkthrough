@@ -13,6 +13,7 @@ library(tidyverse)
 library(knitr)
 library(tsibbledata)
 library(glue)
+library(ggplot2)
 ```
 
 Lets build the starter dataframe and grab the data that comes into the fable package. 
@@ -51,8 +52,19 @@ errs <- tscv_roll_fc |>
     by = "Month") |>
 mutate(e = actual - .mean) |>
 select(Month, .model, e) |>
-pivot_wider(names_from = .model, values_from = e) |>
+pivot_wider(names_from = .model, values_from = e)
 
 head(errs)
 
 ```
+
+Now lets do the DM test. 
+
+```{r}
+forecast::dm.test(errs$snaive, errs$drift, h = 1, power = 1)
+```
+
+
+
+
+
